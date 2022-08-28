@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Realizado Por Jose Pablo Baño</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  </head>
+  <body>
+  <body>
+	
+    <div>
+      <canvas id="lienzo1" width="800" height="800"></canvas>
+	</div>
+	<div>
+	  <canvas style="background-color: rgb(228, 149, 149);" id="lienzo2" width="800" height="100"></canvas>
+	  <!-- Creamos los botones necesarios y les asignamos las funciones que llevaran a cabo  -->
+	  <button onclick="tablero=cuadricula();" >Random </button>
+	  <button onclick="tablero=cuadriculavacia();" >Clear </button>
+	  <button onclick="tablero=siguientefase(tablero);" >Siguiente </button>
+	  <button onclick="temporizador=setInterval(function(){tablero=siguientefase(tablero)},50);" >Empezar</button>
+	  <button onclick="clearInterval(temporizador);" >Detener </button>
+	</div>
+    <script type="text/javascript">
+    //recogemos los canvas que hemos creado 
+    var contextoGrafico = document.getElementById('lienzo1').getContext('2d');
+    var contextoTexto = document.getElementById('lienzo2').getContext('2d');
+	
+	//añadimos los eventlisteners para los eventos de raton 
+	document.getElementById('lienzo1').addEventListener("mousemove", manejaraton, true);
+	document.getElementById('lienzo1').addEventListener("mouseout", manejaraton, true);
+	document.getElementById('lienzo1').addEventListener("click", manejaraton, true);
+	contextoTexto.font="18px Courier New";
+	contextoTexto.fillText("Información gráfica:",10,30);
+	contextoTexto.font="28px Times New";
+	contextoTexto.strokeText("X = 0 Y = 0",10,60);
+	
+	//tamaño de la celula
+	var cellsize=8;
+	var ancho=800;
+	var alto=800;
+	//cuando se inicia la pagina se crea una cuadricula vacia
+	var tablero=cuadriculavacia();
+	
+	//creamos el temporizador que ejecutara la funcion siguiente fase , encargada de simular la transformacion  de las celulas y lo paramos 
+	var temporizador=setInterval(function(){tablero=siguientefase(tablero);},50);
+	clearInterval(temporizador);
+
+
+	//creamos el objeto celula , su constructor tendra el canvas al que pertenece,  unas posiciones x e y del tablero y un estado inicial 
+	function celula(x,y,canvas,estado){
+		
+			this.x=x;
+			this.y=y
+            this.canvas=canvas;
+			this.estado=estado;
+			//estado al que pasara la celula 
+			this.proximoestado=this.estado;
+			//turnos que lleva la celula en ese estado 
+			this.turnosestado=0;
+			//turnos totales de la simulacion 
+			this.turnostotales=0;
+			this.vecinosvivos=0;
+		
+	//funcion que pinta la celula si esta viva la pinta de negro si esta muerta la pinta de blanca
+	this.pintarcelula=function(){
+		if (this.estado==1){
+			this.canvas.fillStyle = '#000';
+		}else{
+			this.canvas.fillStyle = '#fff';
+		}
+		this.canvas.strokeRect(cellsize*this.x,cellsize*this.y,cellsize-1,cellsize-1);
+		this.canvas.fillRect(cellsize*this.x,cellsize*this.y,cellsize-1,cellsize-1);
+		this.canvas.stroke();	
+	}
+	//funcion que utilizamos para cambiar su estado , se usa cuando pulsamos con el raton 
+	this.cambiarestado=function(){
+		if(this.estado==1){
+			this.turnosestado=0;
+			this.estado=0;
+			this.proximoestado=0;
+		}else{
+			this.turnosestado=0;
+			this.estado=1;
+			this.proximoestado=1;
+		}
+	}
+	//recogemos los vecinos de la celula y si esta vivo lo guardamos en la variable vecinos vivos para saber si vivira o morira la siguiente ronda 
+	this.añadirvecinos=function(tablero) {
+    
+    //hacemos un bucle para recorrer los 8 vecinos de la celula 
+    for (var x = this.x-1; x <= this.x+1; x++) {
+      for (var y = this.y-1; y <= this.y+ 1; y++) {
+		//con esta condicion evitamos que se mire a si misma 
+        if (x !== this.x || y !== this.y) {
+		//con estas condiciones hacemos que el mundo sea inifinito y que los bordes sean contiguos
+		  if(x<0 && y<0){
+			  if(tablero[99][99].estado==1){
+			  this.vecinosvivos++;
+		  }}else if (x<0 && y>99){
+			if(tablero[99][0].estado==1){
+			  this.vecinosvivos++;
+		  }}else if (x>99 && y<0){
+			if(tablero[0][99].estado==1){
+			  this.vecinosvivos++;
+		  }}else if (x>99 && y<0){
+			if(tablero[0][99].estado==1){
+			  this.vecinosvivos++;
+		  }}else if (x>99 && y>99){
+			if(tablero[0][0].estado==1){
+			  this.vecinosvivos++;
+		  }}else if (x>99){
+			if(tablero[0][y].estado==1){
+			  this.vecinosvivos++;
+		  }}else if (x<0){
+			if(tablero[99][y].estado==1){
+			  this.vecinosvivos++;
+		  }}else if (y>99){
+			if(tablero[x][0].estado==1){
+			  this.vecinosvivos++;
+		  }}else if (y<0){
+			if(tablero[x][99].estado==1){
+			  this.vecinosvivos++;
+		  }}else{
+           if(tablero[x][y].estado==1){
+			  this.vecinosvivos++;
+		  }	}	 
+		}	
+      }
+    }
+  }
+   
+	//calculamos el siguiente estado que tendra la celula dependiendo de sus vecinos vivvos 
+	this.siguienteestado=function(){
+	
+    if(this.vecinosvivos <=1 || this.vecinosvivos >= 4){      
+      this.proximoestado=0;
+    }
+
+    
+    if(this.vecinosvivos == 3){
+      this.proximoestado=1;
+    }
+	}	
+	
+	//cambiamos el estado de la celula , si no ha cambiado sumamos uno a los turnos del estado si ha cambiado , empieza de 0 
+	this.mutacion=function(){
+		if(this.estado==this.proximoestado){
+			this.turnosestado++;
+		}else{
+			this.turnosestado=0;
+		}
+		this.estado=this.proximoestado;
+		//reiniciamos los vecinos 
+		this.vecinosvivos=0;
+
+	}
+	
+}  
+//creamos una caudricula vacia 
+function cuadriculavacia(){
+
+//creamos un array tablero que estara formado por celulas , y las pintamos , en este caso el estado es 0 para que sea en blanco 
+let tablero = new Array(ancho/cellsize);
+for (let x = 0; x < ancho/cellsize; x++) {
+  tablero[x] = new Array(alto/cellsize);
+}
+	for (var y = 0; y < alto/cellsize; y++)
+		{
+			for (var x = 0; x < ancho/cellsize; x++)
+			{
+			 tablero[x][y]=new celula(x,y,contextoGrafico,0);
+			 tablero[x][y].pintarcelula();
+			 
+			}
+		}	
+return tablero; 
+}
+
+//funcion similar pero asignando estados aleatorios a las celulas 
+function cuadricula(){
+
+let tablero = new Array(ancho/cellsize);
+for (let x = 0; x < ancho/cellsize; x++) {
+  tablero[x] = new Array(alto/cellsize);
+}
+	for (var y = 0; y < alto/cellsize; y++)
+		{
+			for (var x = 0; x < ancho/cellsize; x++)
+			{
+			 tablero[x][y]=new celula(x,y,contextoGrafico,numeroAleatorio(0,1));  
+			 tablero[x][y].pintarcelula();
+			 
+			}
+		}	
+return tablero; 
+}
+
+//funciion encargada de avanzar las fases , 
+function siguientefase(tablero){
+	for (var x = 0; x < 100; x++) {
+      for (var y = 0; y < 100; y++) {
+		  //añadimos la informacion de los vecinos vivos de las celulas recorriendo el tablero 
+		tablero[x][y].añadirvecinos(tablero);
+      }		
+	}for (var x = 0; x < 100; x++) {
+      for (var y = 0; y < 100; y++) {
+		  //calculamos el estado que tendra la celula al proximo turno 
+		tablero[x][y].siguienteestado();
+		
+      }		
+	}
+	for (var x = 0; x < 100; x++) {
+      for (var y = 0; y < 100; y++) {
+		  //cambiamos los estados , pintamos las celulas y sumamos uno a los turnos que lleva el juego 
+		tablero[x][y].mutacion();
+		tablero[x][y].turnostotales++;
+		tablero[x][y].pintarcelula();
+      }		
+	}
+	return tablero;
+	
+}
+//funcion para controlar el juego con el raton , hemos utilizado el ejemplo del ejercicio 21 de la asignatura
+function manejaraton(e){
+	//recogemos la posicion del raton en el canvas 
+    var dimensionesinternas = this.getBoundingClientRect();
+    var posCuadroX = e.pageX - dimensionesinternas.left;	
+    var posCuadroY = e.pageY - dimensionesinternas.top;
+	switch (e.type)
+	{
+			
+	    case "click":
+			    //si hacemos click cambiaremos la celula en la posicion del tablero con las coordenadas de la posicion del raton y la pintamos 
+				tablero[Math.floor(posCuadroX/cellsize)][Math.floor(posCuadroY/cellsize)].cambiarestado();
+				tablero[Math.floor(posCuadroX/cellsize)][Math.floor(posCuadroY/cellsize)].pintarcelula();
+				break;
+				
+		// si pasamos por encimas mostraremos informacion sobre la celula en la que nos posemos 		
+        case "mousemove":
+						if(tablero[Math.floor(posCuadroX/cellsize)][Math.floor(posCuadroY/cellsize)].estado==1){
+							var estadoactual="Viva";
+							
+						}else{
+							estadoactual="Muerta";
+							
+						}
+						var texto = "["+tablero[Math.floor(posCuadroX/cellsize)][Math.floor(posCuadroY/cellsize)].x+","+tablero[Math.floor(posCuadroX/cellsize)][Math.floor(posCuadroY/cellsize)].y+"]       Turno: "+ tablero[Math.floor(posCuadroX/cellsize)][Math.floor(posCuadroY/cellsize)].turnostotales+ "      Estado=" + estadoactual +  " durante "+tablero[Math.floor(posCuadroX/cellsize)][Math.floor(posCuadroY/cellsize)].turnosestado +" turnos.";
+						
+					
+					
+			    break;		        
+        }
+        contextoTexto.clearRect(0,0,800,100);
+		contextoTexto.font="18px Courier New";
+	
+		contextoTexto.font="28px Times New";
+		contextoTexto.strokeText(texto,10,60);						
+	
+        
+	}
+	
+	
+//funcion auxiliar sacada de internet para generar un numero aleatorio 
+function numeroAleatorio(min, max) {
+   return Math.round(Math.random() * (max - min) + min);
+}
+    </script>
+  </body>
+</html>  
